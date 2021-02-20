@@ -50,12 +50,9 @@
         title_class=> 'inverse',  
         class => 'ticket-info-attachments',
         color => "#336699" &>
-<table width="100%"><tr><td align="right"><font size="-1">
-Download attachments as a zip archive |
-% foreach my $mode (qw(Current All)) {
-<a href="<%RT->Config->Get('WebPath')%>/Ticket/AttachmentZip/<%$mode%>/<%$Ticket->Id%>/Ticket_<%$Ticket->Id%>_attachments.zip"><%$mode%></a> |
-% }
-</font></td></tr></table>
+<div style="margin-bottom: 0.5em;"><font size="-1">
+<a title="Download all current attachments in zip archive" href="<%RT->Config->Get('WebPath')%>/Ticket/AttachmentZip/Current/<%$Ticket->Id%>/Ticket_<%$Ticket->Id%>_attachments.zip">Download all attachments</a> | <a title="Download all attachments including all revisions in zip archive" href="<%RT->Config->Get('WebPath')%>/Ticket/AttachmentZip/All/<%$Ticket->Id%>/Ticket_<%$Ticket->Id%>_attachments.zip">Download all revisions</a>
+</font></div>
 % foreach my $key (keys %documents) {
 
 <%$key%><br />
