@@ -209,6 +209,90 @@ my $soffice_convert = sub {
 </%init>
 <%perl>
 if ($mode =~ m/pdf/i) {
+  my $user = $session{'CurrentUser'};
+
+  # new PDF document
+  my $doc = PDF::API2->new;
+  $doc->preferences(
+      -outlines => 1,
+  );
+  $doc->mediabox('Letter');
+
+  my $date = POSIX::strftime("D:%Y%m%d%H%M%S%z", localtime);
+  my $last = POSIX::strftime("D:%Y%m%d%H%M%S", strptime($Ticket->LastUpdated)); 
+
+  $date =~ s/\d\d$/'$&'/; # add apostrophes in timezone for goofy PDF spec
+  $last .= substr($date, -7); # just copy timezone
+
+  $doc->info(
+      'Author'       => $user->FriendlyName,
+      'Title'        => 'Ticket #' . $Ticket->id . ' ' . $Ticket->QueueObj->Name . ': ' . $Ticket->Subject,
+      'Subject'      => $Ticket->SubjectTag . ' ' . $Ticket->Subject,
+
+      'Creator'      => "RT::Extension::AttachmentZip",
+      'Producer'     => "PDF::API2",
+
+      'CreationDate' => $date,
+      'ModDate'      => $last,
+      'Keywords'     => "RT " . $Ticket->QueueObj->Name,
+  );
+
+  # Create Document Outline ("Bookmarks")
+  my $outl = $doc->outlines();
+
+  my $pn = 1;
+
+  my $pdf;
+  my $s;
+
+  # Covert and attach Attachments
+
+  foreach my $name (@filenames) {
+    foreach my $revision (@{$documents{$name}}) { # newest revision first
+      $s = undef;
+
+      my $content = $revision->Content;
+      my $content_type = $revision->ContentType || 'text/plain';
+      $RT::Logger->info( "Append ". $name ." ". $revision->id ." " . $content_type);
+
+      # invoke external converter
+      eval {
+        if ($revision->ContentType eq "text/html") {
+          $s = $html_convert->($content, $content_type); # just in case
+        }
+        elsif ($revision->ContentType eq "application/pdf") {
+          $s = $qpdf_convert->($content, $content_type);
+        }
+        elsif ($soffice_types{$revision->ContentType}) {
+          $s = $soffice_convert->($content, $content_type);
+        }
+      };
+      if ($@) {
+        $RT::Logger->error( "Failed to append: ". $name ." ". $revision->id );
+      }
+
+      if ($s) {
+        $pdf = PDF::API2->openScalar($s);
+        $doc->importpage($pdf, $_) foreach 1 .. $pdf->pages;
+
+        # add a page Bookmark
+        my $o = $outl->outline();
+        $o->dest($doc->openpage($pn));
+        $o->title($name . ", ".$pn);
+
+        $pn += $pdf->pages;
+        $pdf->end();
+        last if ($mode !~ m/all/i); # skip remaining revisions
+      }
+    }
+  }
+
+  $r->content_type( "application/pdf" );
+  $m->clear_buffer();
+  $m->out($doc->stringify());
+  $doc->end();
+  $m->abort;
+
 }
 else { # zip format
 
