@@ -61,11 +61,37 @@ my %soffice_types = (
 );
 </%once>
 <%init>
-# grab ticket number from URL
-my ($mode,$ticket_no) = ($m->dhandler_arg =~ m/^((?:all|current))\/(\d+)\//i );
+#  grab ticket number from URL
+my ($mode, $id) = ($m->dhandler_arg =~ m/^((?:all|current|pdf))\/(\d+)\//i );
 
-# create ticket object
-my $Ticket = LoadTicket($ticket_no);
+unless ($mode && $id) {
+  return $m->abort( 404 );
+}
+
+# load ticket object
+my $Ticket = LoadTicket($id);
+
+unless ($Ticket->id and $Ticket->CurrentUserHasRight('ShowTicket')) {
+  Abort("No permission to view ticket");
+}
+
+# Get attachments
+my $Attachments = $Ticket->Attachments;
+
+# Remember, each message in a transaction is an attachment; we only
+# want named attachments (real files)
+$Attachments->LimitHasFilename;
+
+# Only want PDF
+#if ($mode =~ m/pdf/i) {
+#  $Attachments->ContentType (VALUE => 'application/pdf');
+#}
+
+# attach oldest first, use newest revision
+$Attachments->OrderByCols(
+    { FIELD => 'Created', ORDER => 'ASC' },
+    { FIELD => 'id',      ORDER => 'ASC' },
+);
 
 # collect individual attached files in a hash of arrays
 my $AttachObj = $Ticket->Attachments;
