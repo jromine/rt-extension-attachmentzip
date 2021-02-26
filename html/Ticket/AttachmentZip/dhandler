@@ -1,3 +1,65 @@
+<%once>
+# MASON Handler for path /Ticket/AttachmentZip/ [All|Current|PDF] / TicketID / File.ext
+# # vim: set filetype=mason :
+#
+# https://masonbook.houseabsolute.com/book/chapter-3.html
+# MASON Special Globals
+#
+# $m - A HTML::Mason::Request object: retrieve information on the current
+# request, call other components, or affect the flow of execution.
+# https://masonbook.houseabsolute.com/book/chapter-4.html
+#
+# $r - an Apache::Request object.
+
+use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
+use PDF::API2;
+use File::Temp qw( tempfile tempdir );
+use Data::Dumper;
+use Date::Parse;
+
+# MIME type conversions handled by LibreOffice (soffice)
+#
+my %soffice_types = (
+#  'application/pdf'                                                            => '.pdf',
+#  'text/html'                                                                  => '.html',
+  'text/plain'                                                                 => '.txt',
+
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'    => '.docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'          => '.xlsx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation'  => '.pptx',
+  'application/msword'                                                         => '.doc',
+  'application/vnd.ms-excel'                                                   => '.xls',
+  'application/vnd.ms-powerpoint'                                              => '.ppt',
+  'application/rtf'                                                            => '.rtf',
+
+  'application/vnd.oasis.opendocument.chart'                                   => '.odc',
+  'application/vnd.oasis.opendocument.database'                                => '.odb',
+  'application/vnd.oasis.opendocument.formula'                                 => '.odf',
+  'application/vnd.oasis.opendocument.graphics'                                => '.odg',
+  'application/vnd.oasis.opendocument.graphics-template'                       => '.otg',
+  'application/vnd.oasis.opendocument.image'                                   => '.odi',
+  'application/vnd.oasis.opendocument.presentation'                            => '.odp',
+  'application/vnd.oasis.opendocument.presentation-template'                   => '.otp',
+  'application/vnd.oasis.opendocument.spreadsheet'                             => '.ods',
+  'application/vnd.oasis.opendocument.spreadsheet-template'                    => '.ots',
+  'application/vnd.oasis.opendocument.text'                                    => '.odt',
+  'application/vnd.oasis.opendocument.text-master'                             => '.odm',
+  'application/vnd.oasis.opendocument.text-template'                           => '.ott',
+  'application/vnd.oasis.opendocument.text-web'                                => '.oth',
+
+  'application/vnd.visio'                                                      => '.vsd',
+  'application/x-abiword'                                                      => '.abw',
+  'image/bmp'                                                                  => '.bmp',
+  'image/gif'                                                                  => '.gif',
+#  'image/vnd.microsoft.icon'                                                   => '.ico',
+  'image/jpeg'                                                                 => '.jpg',
+  'image/jpg'                                                                  => '.jpg',
+  'image/png'                                                                  => '.png',
+#  'image/svg+xml'                                                              => '.svg',
+  'image/tiff'                                                                 => '.tiff',
+#  'image/webp'                                                                 => '.webp'
+);
+</%once>
 <%init>
 # grab ticket number from URL
 my ($mode,$ticket_no) = ($m->dhandler_arg =~ m/^((?:all|current))\/(\d+)\//i );
@@ -69,7 +131,3 @@ undef $tempdir;
 <%attr>
 AutoFlush => 0
 </%attr>
-<%once>
-use Archive::Zip qw( :ERROR_CODES :CONSTANTS);
-use File::Temp qw( tempfile tempdir);
-</%once>
