@@ -109,6 +109,103 @@ while ( my $attach = $Attachments->Next() ) {
 my $tempdir = File::Temp->newdir( CLEANUP => 1 );
 my $zip = Archive::Zip->new();
 my ($zip_fh,$zip_name) = Archive::Zip::tempFile($tempdir);
+
+# make sure we can find wkhtmltopdf and others
+my $path = $ENV{'PATH'};
+$ENV{'PATH'} =  '/usr/local/bin:'.$path unless ($path =~ m|/usr/local/bin|);
+
+# filter content with converter
+# @param String content
+# @returns String content
+#
+my $html_convert = sub {
+
+  my $content = shift;
+  my $content_type = shift;
+
+  # maybe this should decode into utf8, and Correspond.html should
+  # be served as utf8, but it works like this so leave it.
+
+  my $ext = '.html';
+
+  my ($ih, $infile) = tempfile( DIR => $tempdir, SUFFIX => $ext);
+  binmode $ih;
+  print $ih $content;
+
+  my $outfile = $infile;
+  $outfile =~ s/$ext/.pdf/;
+
+  $RT::Logger->info( "wkhtmltopdf -q --no-images --disable-javascript --page-size letter $infile $outfile");
+  system("wkhtmltopdf -q --no-images --disable-javascript --page-size letter $infile $outfile");
+
+  open my $fh, '<', $outfile or die "Can't open file $!";
+  binmode $fh;
+  read $fh, my $s, -s $fh;
+  close $fh;
+
+  close $ih; # and unlink
+  unlink $outfile;
+
+  return $s;
+
+};
+
+my $qpdf_convert = sub {
+
+  my $content = shift;
+  my $ext = '.bak';
+
+  my ($ih, $infile) = tempfile( DIR => $tempdir, SUFFIX => $ext);
+  binmode $ih;
+  print $ih $content;
+
+  my $outfile = $infile;
+  $outfile =~ s/$ext/.pdf/;
+
+  $RT::Logger->info( "qpdf --force-version=1.4 --decrypt $infile $outfile" );
+
+  system("qpdf --force-version=1.4 --decrypt $infile $outfile");
+
+  open my $fh, '<', $outfile or die "Can't open file $!";
+  binmode $fh;
+  read $fh, my $s, -s $fh;
+  close $fh;
+
+  close $ih; # and unlink
+  unlink $outfile;
+
+  return $s;
+
+};
+
+my $soffice_convert = sub {
+
+  my $content = shift;
+  my $type = shift;
+  my $ext =  $soffice_types{$type};
+
+  my ($ih, $infile) = tempfile( DIR => $tempdir, SUFFIX => $ext);
+  binmode $ih;
+  print $ih $content;
+
+  my $outfile = $infile;
+  $outfile =~ s/$ext/.pdf/;
+
+  $RT::Logger->info("libreoffice --headless --convert-to pdf --outdir $tempdir $infile (outfile=$outfile)");
+
+  system("libreoffice --headless --convert-to pdf --outdir $tempdir $infile");
+
+  open my $fh, '<', $outfile or die "Can't open file $!";
+  binmode $fh;
+  read $fh, my $s, -s $fh;
+  close $fh;
+
+  close $ih; # and unlink infile
+  unlink $outfile;
+
+  return $s;
+
+};
 </%init>
 <%perl>
 if ($mode =~ m/pdf/i) {
