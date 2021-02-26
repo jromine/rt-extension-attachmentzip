@@ -1,0 +1,21 @@
+%# # vim: set filetype=mason : 
+%# Add our 'Download all attachments' links unless $HideTitleBox
+%# Our path handler is located at html/Ticket/AttachmentZip/dhandler / [All|Current] / TicketID / Filename.zip
+%#
+% unless ($HideTitleBox) {
+<div style="margin-bottom: 0.5em;">
+<font size="-1">
+<div>
+  <a title="Download all current attachments in zip archive" href="<%RT->Config->Get('WebPath')%>/Ticket/AttachmentZip/Current/<%$Ticket->Id%>/Ticket_<%$Ticket->Id%>_attachments.zip">Download attachments as Zip</a> | 
+  <a title="Download all attachments including all revisions in zip archive" href="<%RT->Config->Get('WebPath')%>/Ticket/AttachmentZip/All/<%$Ticket->Id%>/Ticket_<%$Ticket->Id%>_attachments.zip">with revisions</a>
+</div>
+<div>
+  <a title="Download Ticket attachments into one PDF document" href="<%RT->Config->Get('WebPath')%>/Ticket/AttachmentZip/PDF/<%$Ticket->Id%>/Ticket_<%$Ticket->Id%>_attachments.pdf">Download as PDF</a>
+</div>
+</font></div>
+% }
+<%ARGS>
+$Ticket => undef
+$HideTitleBox => 0
+$Selectable => 0
+</%ARGS>
