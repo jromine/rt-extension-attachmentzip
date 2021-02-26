@@ -245,6 +245,26 @@ if ($mode =~ m/pdf/i) {
   my $pdf;
   my $s;
 
+  # Start with Correspondence
+
+  if ($RT::Extension::Correspond::VERSION) {
+    $s = $m->scomp ( '/Ticket/Correspond.html', id => $Ticket->id );
+    $s = $html_convert->($s) if ($s);
+    if ($s) {
+      $pdf = PDF::API2->openScalar($s);
+
+      $doc->importpage($pdf, $_) foreach 1 .. $pdf->pages;
+
+      # add a page Bookmark
+      my $o = $outl->outline();
+      $o->dest($doc->openpage($pn));
+      $o->title("Ticket Correspondence, ".$pn);
+
+      $pn += $pdf->pages;
+      $pdf->end();
+    }
+  }
+
   # Covert and attach Attachments
 
   foreach my $name (@filenames) {
