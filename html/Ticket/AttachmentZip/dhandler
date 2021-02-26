@@ -94,12 +94,18 @@ $Attachments->OrderByCols(
 );
 
 # collect individual attached files in a hash of arrays
-my $AttachObj = $Ticket->Attachments;
-my %attached_files;
-while (my $attached_name = $AttachObj->Next() ) {
-  next unless ($attached_name->Filename());
-  unshift( @{ $attached_files{ $attached_name->Filename } }, $attached_name );
+my %documents;
+my @filenames; # ordered list
+while ( my $attach = $Attachments->Next() ) {
+  
+   next unless ($attach->Filename());
+
+   my $k = $attach->Filename || $attach->id;
+
+   push @filenames, $k unless $documents{ $k };
+   unshift( @{ $documents{ $k } }, $attach );
 }
+
 my $tempdir = File::Temp->newdir( CLEANUP => 1 );
 my $zip = Archive::Zip->new();
 my ($zip_fh,$zip_name) = Archive::Zip::tempFile($tempdir);
