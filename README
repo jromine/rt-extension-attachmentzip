@@ -1,17 +1,49 @@
-This is an extension for Best Practical's Request Tracker
-http://www.bestpractical.com/rt
+NAME
+    RT-Extension-AttachmentZip - Download attachments archive
 
-This extension permits you to download the attachments associated with a ticket as a zip file.
+DESCRIPTION
+    This extension displays a Download All Attachments link in the
+    attachment sections. Three options are offered: Download all attachments
+    as zip, Download all attachments including all revisions as zip, Combine
+    all attachments into one PDF download.
 
-There are two options:
+RT VERSION
+    Works with RT 4.4
 
-1) current
-2) all
+INSTALLATION
+    perl Makefile.PL
+    make
+    make install
+        May need root permissions
 
-Current mode downloads just the most recent revision of the attached file
-All mode downloads _all_ the revisions, and prepends the revision id number to the filename.
+    Edit your /opt/rt4/etc/RT_SiteConfig.pm
+        Add this line:
 
-Enjoy
+            Plugin('RT::Extension::AttachmentsZip');
 
-Richard Harman
-<richard+rtx-attachmentzip@richardharman.com>
+    Clear your mason cache
+            rm -rf /opt/rt4/var/mason_data/obj
+
+    Restart your webserver
+
+CONFIGURATION
+    None.
+
+DEPENDENCIES
+    Archive::Zip, CAM::PDF
+
+AUTHOR
+    Best Practical Solutions, LLC <modules@bestpractical.com>
+
+    Richard G Harman Jr <rtx-attachmentszip+richard@richardharman.com>
+
+    John Romine, School of Engineering, University of California, Irvine
+    <jromine@uci.edu>
+
+LICENSE AND COPYRIGHT
+    This software is Copyright (c) 2018 by Best Practical Solutions, LLC
+
+    This is free software, licensed under:
+
+      The GNU General Public License, Version 2, June 1991
+

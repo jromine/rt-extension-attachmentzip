@@ -1,22 +1,30 @@
 ---
-abstract: 'RT AttachmentZip Extension'
+abstract: 'RT-Extension-AttachmentZip Extension'
 author:
+  - 'Best Practical Solutions, LLC <modules@bestpractical.com>'
   - 'Richard G Harman Jr <rtx-attachmentszip+richard@richardharman.com>'
 build_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.59
 configure_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.59
 distribution_type: module
-generated_by: 'Module::Install version 0.93'
-license: 'GPL Version 2'
+dynamic_config: 1
+generated_by: 'Module::Install version 1.19'
+license: gpl_2
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
   version: 1.4
-name: RTx-AttachmentZip
+name: RT-Extension-AttachmentZip
 no_index:
   directory:
     - html
     - inc
 requires:
   Archive::Zip: 0
-version: 1.0
+  PDF::API2: 0
+  perl: 5.8.3
+resources:
+  license: http://opensource.org/licenses/gpl-license.php
+version: '1.1'
+x_module_install_rtx_version: '0.42'
+x_requires_rt: 4.0.0
