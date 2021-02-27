@@ -15,7 +15,6 @@ use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use PDF::API2;
 use File::Temp qw( tempfile tempdir );
 use Data::Dumper;
-use Date::Parse;
 
 # MIME type conversions handled by LibreOffice (soffice)
 #
@@ -218,11 +217,15 @@ if ($mode =~ m/pdf/i) {
   );
   $doc->mediabox('Letter');
 
-  my $date = POSIX::strftime("D:%Y%m%d%H%M%S%z", localtime);
-  my $last = POSIX::strftime("D:%Y%m%d%H%M%S", strptime($Ticket->LastUpdated)); 
+  my $dt = RT::Date->new($user);
+  $dt->SetToNow;
+  my $cdate = $dt->Strftime("D:%Y%m%d%H%M%S%z");
 
-  $date =~ s/\d\d$/'$&'/; # add apostrophes in timezone for goofy PDF spec
-  $last .= substr($date, -7); # just copy timezone
+  $dt->Set('Format' => 'ISO', 'Value' => $Ticket->LastUpdated);
+  my $mdate = $dt->Strftime("D:%Y%m%d%H%M%S%z");
+
+  $cdate =~ s/\d\d$/'$&'/; # add apostrophes in timezone for goofy PDF spec
+  $mdate =~ s/\d\d$/'$&'/;
 
   $doc->info(
       'Author'       => $user->FriendlyName,
@@ -232,8 +235,8 @@ if ($mode =~ m/pdf/i) {
       'Creator'      => "RT::Extension::AttachmentZip",
       'Producer'     => "PDF::API2",
 
-      'CreationDate' => $date,
-      'ModDate'      => $last,
+      'CreationDate' => $cdate,
+      'ModDate'      => $mdate, # ticket mod date
       'Keywords'     => "RT " . $Ticket->QueueObj->Name,
   );
 
