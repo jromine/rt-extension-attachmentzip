@@ -122,20 +122,19 @@ my $html_convert = sub {
   my $content = shift;
   my $content_type = shift;
 
-  # maybe this should decode into utf8, and Correspond.html should
-  # be served as utf8, but it works like this so leave it.
+  # RT uses utf8 internally, so tell html converter that
 
   my $ext = '.html';
 
   my ($ih, $infile) = tempfile( DIR => $tempdir, SUFFIX => $ext);
-  binmode $ih;
+  binmode ($ih, ":encoding(UTF-8)");
   print $ih $content;
 
   my $outfile = $infile;
   $outfile =~ s/$ext/.pdf/;
 
-  $RT::Logger->info( "wkhtmltopdf -q --no-images --disable-javascript --page-size letter $infile $outfile");
-  system("wkhtmltopdf -q --no-images --disable-javascript --page-size letter $infile $outfile");
+  $RT::Logger->info( "wkhtmltopdf -q --encoding UTF-8 --no-images --disable-javascript --page-size letter $infile $outfile");
+  system("wkhtmltopdf -q --encoding UTF-8 --no-images --disable-javascript --page-size letter $infile $outfile");
 
   open my $fh, '<', $outfile or die "Can't open file $!";
   binmode $fh;
@@ -276,7 +275,7 @@ if ($mode =~ m/pdf/i) {
 
       my $content = $revision->Content;
       my $content_type = $revision->ContentType || 'text/plain';
-      $RT::Logger->info( "Append ". $name ." ". $revision->id ." " . $content_type);
+      $RT::Logger->info( join ' ', 'Convert', $name, $revision->id, $content_type, 'Ticket #' . $Ticket->id);
 
       # invoke external converter
       eval {
