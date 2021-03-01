@@ -15,6 +15,7 @@ use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use PDF::API2;
 use File::Temp qw( tempfile tempdir );
 use Data::Dumper;
+use MIME::Base64 qw( encode_base64 );
 
 # MIME type conversions handled by LibreOffice (soffice)
 #
@@ -117,15 +118,39 @@ $ENV{'PATH'} =  '/usr/local/bin:'.$path unless ($path =~ m|/usr/local/bin|);
 # @param String content
 # @returns String content
 #
+my $inline_data = sub {
+  my $pre = shift;
+  my $trans = shift;
+  my $attach = shift;
+  my $suf = shift;
+
+  my $AttachmentObj = RT::Attachment->new( $session{'CurrentUser'} );
+  $AttachmentObj->Load($attach) || Abort("Attachment '$attach' could not be loaded", Code => HTTP::Status::HTTP_NOT_FOUND);
+
+  unless ( $AttachmentObj->id ) {
+    Abort("Bad attachment id. Couldn't find attachment '$attach'\n", Code => HTTP::Status::HTTP_NOT_FOUND);
+  }
+  unless ( $AttachmentObj->TransactionId() == $trans ) {
+    Abort("Bad transaction number for attachment. $trans should be". $AttachmentObj->TransactionId() . "\n", Code => HTTP::Status::HTTP_NOT_FOUND);
+  }
+
+  my $content = $AttachmentObj->OriginalContent;
+  my $content_type = $AttachmentObj->ContentType || 'text/plain';
+
+  return $pre. "data:" . $content_type . ";base64," . encode_base64($content) . $suf;
+};
+
 my $html_convert = sub {
 
   my $content = shift;
   my $content_type = shift;
 
-  # RT uses utf8 internally, so tell html converter that
-
   my $ext = '.html';
 
+  # inline embedded image content, other images will be attached separately
+  $content =~ s{(<img[^>]*src=")Attachment/([0-9]+)/([0-9]+)/?[^"]*("[^>]*>)}{$inline_data->($1,$2,$3,$4);}gie;
+
+  # RT uses utf8 internally, so tell html converter that
   my ($ih, $infile) = tempfile( DIR => $tempdir, SUFFIX => $ext);
   binmode ($ih, ":encoding(UTF-8)");
   print $ih $content;
@@ -133,8 +158,8 @@ my $html_convert = sub {
   my $outfile = $infile;
   $outfile =~ s/$ext/.pdf/;
 
-  $RT::Logger->info( "wkhtmltopdf -q --encoding UTF-8 --no-images --disable-javascript --page-size letter $infile $outfile");
-  system("wkhtmltopdf -q --encoding UTF-8 --no-images --disable-javascript --page-size letter $infile $outfile");
+  $RT::Logger->info( "wkhtmltopdf -q --encoding UTF-8 --disable-javascript --page-size letter $infile $outfile");
+  system("wkhtmltopdf -q --encoding UTF-8 --disable-javascript --page-size letter $infile $outfile");
 
   open my $fh, '<', $outfile or die "Can't open file $!";
   binmode $fh;
@@ -260,7 +285,7 @@ if ($mode =~ m/pdf/i) {
       # add a page Bookmark
       my $o = $outl->outline();
       $o->dest($doc->openpage($pn));
-      $o->title("Ticket Correspondence, ".$pn);
+      $o->title("Ticket #" . $Ticket->id . ", ".$pn);
 
       $pn += $pdf->pages;
       $pdf->end();
@@ -276,6 +301,13 @@ if ($mode =~ m/pdf/i) {
       my $content = $revision->Content;
       my $content_type = $revision->ContentType || 'text/plain';
       $RT::Logger->info( join ' ', 'Convert', $name, $revision->id, $content_type, 'Ticket #' . $Ticket->id);
+
+      # skip inline'd images
+      my $content_disposition  = $revision->GetHeader('Content-Disposition');
+      last if ( RT->Config->Get('ShowTransactionImages') && $content_disposition =~ m/inline/ && $revision->GetHeader('Content-ID') );
+
+      # Do not show disclaimers as attachments
+      last if ( $content_disposition =~ m/inline/ && $revision->ContentType eq 'text/plain' );
 
       # invoke external converter
       eval {
